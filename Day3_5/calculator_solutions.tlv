@@ -12,17 +12,23 @@
    m5_makerchip_module   // (Expanded in Nav-TLV pane.)
 \TLV
    $reset = *reset;
+   |calc
+      @1  
+         $val1[31:0] = >>2$out1;
+         $val2[31:0] = $rand2[3:0];
    
-   $val1[31:0] = >>1$out1;
-   $val2[31:0] = $rand2[3:0];
+         $sum = $val1 + $val2 ;
+         $diff = $val1 - $val2 ;
+         $prod = $val1 * $val2 ;
+         $qout = $val1 / $val2 ;
+         $cnt[31:0] = $reset ? 0 : (1 + >>1$cnt);
+       
+      @2
+         $valid = $cnt ;
+       
    
-   $sum = $val1 + $val2 ;
-   $diff = $val1 - $val2 ;
-   $prod = $val1 * $val2 ;
-   $qout = $val1 / $val2 ;
-   
-   $out1 = $op[1] ? ($op[0]?  $qout :$prod) : ($op[0]? $diff: $sum);
-   $out = $reset ? 32'b0 : $out1;
+         $out1 = $op[1] ? ($op[0]?  $qout :$prod) : ($op[0]? $diff: $sum);
+         $out = ($reset | ~$valid)  ? 32'b0 : $out1;
  
  
    // Assert these to end simulation (before the cycle limit).
