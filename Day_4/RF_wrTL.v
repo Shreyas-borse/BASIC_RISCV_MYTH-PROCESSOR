@@ -53,7 +53,11 @@
          $is_u_instr = $instr[6:2] ==? 5'b0x101 ;
          $is_r_instr = $instr[6:2] ==? 5'b01011 || $instr[6:2] == 5'b011x0 || $instr[6:2] == 5'b10100;
          
-         $imm[31:0] = $is_i_instr ? { {21{$inst[31]}},$inst[30:20]}: $is_s_instr ? { {8{$inst[31]}},$inst[30:7]} : $is_b_instr ? { {7{$inst[31]}},$inst[7],$inst[30:8],1'b0} : $is_u_instr ? {$inst[31:12],{12{1'b0}}} : $is_j_instr ? { {18{$inst[31]}},$inst[19:12],$inst[20],$inst[30:21],1'b0}: 32'b0;
+         $imm[31:0] = $is_i_instr ? {{21{$instr[31]}}, $instr[30:20]} :
+                      $is_s_instr ? {{21{$instr[31]}}, $instr[30:25], $instr[11:7]} :
+                      $is_b_instr ? {{20{$instr[31]}}, $instr[7], $instr[30:25], $instr[11:8], 1'b0} :
+                      $is_u_instr ? {$instr[31:12], 12'b0} :
+                      $is_j_instr ? {{12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0} : 32'b0;
          
          $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
          ?$rs2_valid
@@ -134,3 +138,4 @@
    m4+cpu_viz(@4)    // For visualisation, argument should be at least equal to the last stage of CPU logic. @4 would work for all labs.
 \SV
    endmodule
+
