@@ -40,7 +40,8 @@
    |cpu
       @0
          $reset = *reset;
-         $i_pc[31:0] = >>1$reset ? 0 : (32'd4 + >>1$i_pc);
+         //$i_pc[31:0] = >>1$reset ? 0 : (32'd4 + >>1$i_pc);
+         $i_pc[31:0] = >>1$reset ? 0 : >>1$taken_br ? >>1$br_tgt_pc : (32'd4 + >>1$i_pc);
          $imem_rd_en = !$reset;
          $imem_rd_addr = $i_pc[M4_IMEM_INDEX_CNT+1:2];
       @1
@@ -112,10 +113,21 @@
          $rf_wr_index[4:0] = $rd;
          $rf_wr_data[31:0] = $result;
          
-
+         $taken_br = $is_beq ? ($src1_value == $src2_value) :
+                     $is_bne ? ($src1_value != $src2_value) :
+                     $is_blt ? ($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31]):
+                     $is_bge ? ($src1_value >= $src2_value) ^ ($src1_value[31]!=  $src2_value[31]) :
+                     $is_bltu ? ($src1_value <= $src2_value) :
+                     $is_bgeu ? ($src1_value >= $src2_value) : 1'b0;
+         
+         $br_tgt_pc = $i_pc + $imm;
+         
+         *passed = |cpu/xreg[10]>>5$value == (1+2+3+4+5+6+7+8+9) ;
+         
+         
       //@2
       //   $value = >>1$result;
-         
+      
       // Note: Because of the magic we are using for visualisation, if visualisation is enabled below,
       //       be sure to avoid having unassigned signals (which you might be using for random inputs)
       //       other than those specifically expected in the labs. You'll get strange errors for these.
@@ -138,4 +150,3 @@
    m4+cpu_viz(@4)    // For visualisation, argument should be at least equal to the last stage of CPU logic. @4 would work for all labs.
 \SV
    endmodule
-
