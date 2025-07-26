@@ -53,7 +53,11 @@
          $is_u_instr = $instr[6:2] ==? 5'b0x101 ;
          $is_r_instr = $instr[6:2] ==? 5'b01011 || $instr[6:2] == 5'b011x0 || $instr[6:2] == 5'b10100;
          
-         $imm[31:0] = $is_i_instr ? { {21{$inst[31]}},$inst[30:20]}: $is_s_instr ? { {8{$inst[31]}},$inst[30:7]} : $is_b_instr ? { {7{$inst[31]}},$inst[7],$inst[30:8],1'b0} : $is_u_instr ? {$inst[31:12],{12{1'b0}}} : $is_j_instr ? { {18{$inst[31]}},$inst[19:12],$inst[20],$inst[30:21],1'b0}: 32'b0;
+         $imm[31:0] = $is_i_instr ? {{21{$instr[31]}}, $instr[30:20]} :
+                      $is_s_instr ? {{21{$instr[31]}}, $instr[30:25], $instr[11:7]} :
+                      $is_b_instr ? {{20{$instr[31]}}, $instr[7], $instr[30:25], $instr[11:8], 1'b0} :
+                      $is_u_instr ? {$instr[31:12], 12'b0} :
+                      $is_j_instr ? {{12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0} : 32'b0;
          
          $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
          ?$rs2_valid
@@ -89,24 +93,29 @@
          $is_add  = $dec_bits ==? 11'bx_000_0110011;
          
          
-         `BOGUS_USE($is_beq $is_bne $is_blt $is_bge)
-         
-         //$rf_rd_en = !$reset;
-         $wr_ignore = ($rd != 0);
-         ?$wr_ignore
-            $rf_wr_index[4:0] = $rd;
-            $rf_wr_data[31:0] = >>1$result;
-            $rf_wr_en = $rd_valid;
+         `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
          
          $rf_rd_enl = $rs1_valid;
          $rf_rd_index1[4:0] = $rs1;
          $rf_rd_en2 = $rs2_valid;
          $rf_rd_index2[4:0] = $rs2;
-         $rf_rd_data1[31:0] = $src1_value[31:0];
-         $rf_rd_data2[31:0] = $src2_value[31:0];
+         $src1_value[31:0] = $rf_rd_data1[31:0] ;
+         $src2_value[31:0] = $rf_rd_data2[31:0] ;
          
+         //EX
          $result = $is_addi ? $src1_value + $imm : $is_add ? $src1_value +$src2_value : 32'bx;
-          
+         
+         //WR
+         $wr_ignore = ($rd != 5'b0);
+         ?$wr_ignore
+            $rf_wr_en = $rd_valid;
+         $rf_wr_index[4:0] = $rd;
+         $rf_wr_data[31:0] = $result;
+         
+
+      //@2
+      //   $value = >>1$result;
+         
       // Note: Because of the magic we are using for visualisation, if visualisation is enabled below,
       //       be sure to avoid having unassigned signals (which you might be using for random inputs)
       //       other than those specifically expected in the labs. You'll get strange errors for these.
@@ -129,3 +138,4 @@
    m4+cpu_viz(@4)    // For visualisation, argument should be at least equal to the last stage of CPU logic. @4 would work for all labs.
 \SV
    endmodule
+
