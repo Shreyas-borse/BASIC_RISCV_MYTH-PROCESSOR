@@ -41,9 +41,11 @@
       @0
          $reset = *reset;
          //$i_pc[31:0] = >>1$reset ? 0 : (32'd4 + >>1$i_pc);
-         $i_pc[31:0] = >>1$reset ? 0 : >>1$taken_br ? >>1$br_tgt_pc : (32'd4 + >>1$i_pc);
-
+         $i_pc[31:0] = >>1$reset ? 0 : >>3$valid_br_taken ? >>3$br_tgt_pc : >>3$inc_pc;
+         $start = $reset ? 1'b0 : ($reset ^ >>1$reset);
+         $valid = $reset ? 1'b0 : ($start || >>3$valid);
       @1
+         $inc_pc[31:0] = $i_pc[31:0] + 32'd4;
          $imem_rd_en = !$reset;
          $imem_rd_addr[M4_IMEM_INDEX_CNT-1:0] = $i_pc[M4_IMEM_INDEX_CNT+1:2];
          $instr[31:0] = $imem_rd_data[31:0];
@@ -95,21 +97,26 @@
          
          
          `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
-         
+      @2   
          $rf_rd_enl = $rs1_valid;
          $rf_rd_index1[4:0] = $rs1;
          $rf_rd_en2 = $rs2_valid;
          $rf_rd_index2[4:0] = $rs2;
-         $src1_value[31:0] = $rf_rd_data1[31:0] ;
-         $src2_value[31:0] = $rf_rd_data2[31:0] ;
+         //$src1_value[31:0] = $rf_rd_data1[31:0] ;
+         //$src2_value[31:0] = $rf_rd_data2[31:0] ;
+         $src1_value[31:0] = (>>1$rf_wr_index == $rf_rd_index1) && >>1$rf_wr_en ? >>2$result : $rf_rd_data1;
+         $src2_value[31:0] = (>>1$rf_wr_index == $rf_rd_index2) && >>1$rf_wr_en ? >>2$result : $rf_rd_data2;
          
+         $br_tgt_pc[31:0] = $i_pc + $imm;
+         
+      @3
          //EX
          $result[31:0] = $is_addi ? $src1_value + $imm : $is_add ? $src1_value +$src2_value : 32'bx;
          
          //WR
-         $wr_ignore = ($rd != 5'b0);
+         $wr_ignore = ($rd != 5'b0 );
          ?$wr_ignore
-            $rf_wr_en = $rd_valid;
+            $rf_wr_en = $rd_valid && $valid ;
          $rf_wr_index[4:0] = $rd;
          $rf_wr_data[31:0] = $result;
          
@@ -120,13 +127,11 @@
                      $is_bltu ? ($src1_value < $src2_value) :
                      $is_bgeu ? ($src1_value >= $src2_value) : 1'b0;
          
-         $br_tgt_pc[31:0] = $i_pc + $imm;
+         
+         $valid_br_taken = $taken_br && $valid;
          
          *passed = |cpu/xreg[10]>>5$value == (1+2+3+4+5+6+7+8+9) ;
          
-         
-      //@2
-      //   $value = >>1$result;
       
       // Note: Because of the magic we are using for visualisation, if visualisation is enabled below,
       //       be sure to avoid having unassigned signals (which you might be using for random inputs)
@@ -144,7 +149,7 @@
    //  o CPU visualization
    |cpu
       m4+imem(@1)    // Args: (read stage)
-      m4+rf(@1, @1)  // Args: (read stage, write stage) - if equal, no register bypass is required
+      m4+rf(@2, @3)  // Args: (read stage, write stage) - if equal, no register bypass is required
       //m4+dmem(@4)    // Args: (read/write stage)
 
    m4+cpu_viz(@4)    // For visualisation, argument should be at least equal to the last stage of CPU logic. @4 would work for all labs.
