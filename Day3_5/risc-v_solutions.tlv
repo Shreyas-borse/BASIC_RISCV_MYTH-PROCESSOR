@@ -41,12 +41,13 @@
       @0
          $reset = *reset;
          //$i_pc[31:0] = >>1$reset ? 0 : (32'd4 + >>1$i_pc);
-         $i_pc[31:0] = >>1$reset ? 0 : >>3$valid_br_taken ? >>3$br_tgt_pc : >>3$valid_ld ? >>3$inc_pc : >>1$inc_pc;
+         $i_pc[31:0] = >>1$reset ? 0 : >>3$valid_br_taken ? >>3$br_tgt_pc : >>3$valid_ld ? >>3$inc_pc : >>3$valid_jump ? >>3$jalr_tgt_pc : >>1$inc_pc;
          //$start = $reset ? 1'b0 : ($reset ^ >>1$reset);
          //$valid = $reset ? 1'b0 : ($start || >>3$valid);
       @3
-         $valid = !(>>1$valid_br_taken || >>2$valid_br_taken || >>1$valid_ld || >>2$valid_ld);
+         $valid = !(>>1$valid_br_taken || >>2$valid_br_taken || >>1$valid_ld || >>2$valid_ld || >>1$valid_jump || >>2$valid_jump);
          $valid_ld = $is_load && $valid;
+         $valid_jump = $is_jump && $valid;
       @1
          $inc_pc[31:0] = $i_pc[31:0] + 32'd4;
          $imem_rd_en = !$reset;
@@ -132,6 +133,7 @@
          // Load Instructions
          $is_load = $opcode == 7'b0000011;
          
+         
          `BOGUS_USE($is_beq $is_bne $is_blt $is_bge $is_bltu $is_bgeu $is_addi $is_add)
       @2   
          $rf_rd_enl = $rs1_valid;
@@ -179,6 +181,11 @@
          
          
          $valid_br_taken = $taken_br && $valid;
+         
+         // Jump Instruction
+         $is_jump = $is_jal || $is_jalr;
+         $jalr_tgt_pc = $src1_value + $imm;
+         
          
          //load store
       @4
